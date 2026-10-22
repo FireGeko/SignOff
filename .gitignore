@@ -1,0 +1,15 @@
+# OS clutter
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor and tool settings
+.vscode/
+.idea/
+.claude/
+
+# Planning and private notes never belong in this repo
+*HANDOVER*
+*handover*
+notes/
+planning/

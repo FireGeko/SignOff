@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SignOff – Email Signature Maker</title>
+  <meta name="description" content="Make a clean, modern email signature in minutes. Free, no sign-up, works with Outlook, Gmail and Apple Mail.">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">S</span>
+      <span class="brand-name">SignOff</span>
+    </div>
+    <p class="tagline">Free email signatures for Outlook, Gmail and Apple Mail. No sign-up.</p>
+  </header>
+
+  <main class="layout">
+    <!-- Editor -->
+    <section class="editor" aria-label="Signature editor">
+
+      <details class="panel" open>
+        <summary><span class="step">1</span> Choose a style</summary>
+        <div class="template-grid" id="templateGrid" role="radiogroup" aria-label="Template"></div>
+      </details>
+
+      <details class="panel" open>
+        <summary><span class="step">2</span> Your details</summary>
+        <div class="fields">
+          <label>Full name<input type="text" data-field="name" autocomplete="name"></label>
+          <label>Job title<input type="text" data-field="jobTitle" autocomplete="organization-title"></label>
+          <label class="full">Company or organisation<input type="text" data-field="company" autocomplete="organization"></label>
+        </div>
+      </details>
+
+      <details class="panel" open>
+        <summary><span class="step">3</span> Contact</summary>
+        <div class="fields">
+          <label>Phone<input type="tel" data-field="phone" autocomplete="tel"></label>
+          <label>Mobile<input type="tel" data-field="mobile"></label>
+          <label>Email<input type="email" data-field="email" autocomplete="email"></label>
+          <label>Website<input type="url" data-field="website" placeholder="www.example.com"></label>
+          <label class="full"><span>Address <span class="optional">optional</span></span><textarea data-field="address" rows="2"></textarea></label>
+        </div>
+      </details>
+
+      <details class="panel">
+        <summary><span class="step">4</span> Logo and badges</summary>
+        <div class="fields">
+          <label class="full">Logo image link
+            <input type="url" data-field="logoUrl" placeholder="https://www.yoursite.com/logo.png">
+          </label>
+          <p class="hint full" id="logoStatus" role="status" aria-live="polite"></p>
+          <label class="full">Logo width <output id="logoWidthOut"></output>
+            <input type="range" min="40" max="300" step="5" data-field="logoWidth">
+          </label>
+          <details class="help full">
+            <summary>Where do I get a logo link?</summary>
+            <p>Email signatures can't carry uploaded pictures reliably, so your logo has to live on the web. Two easy ways:</p>
+            <ol>
+              <li><strong>From your own website.</strong> Open your site, right-click your logo and choose <em>Copy image address</em>. Paste it above.</li>
+              <li><strong>Upload it somewhere public.</strong> Any host that gives you a direct link ending in <code>.png</code> or <code>.jpg</code> works. Ask whoever runs your website to add it if you can.</li>
+            </ol>
+            <p>Avoid OneDrive, Google Drive and Dropbox share links. They open a viewer page, not the image, so the logo shows as broken.</p>
+            <p>For a sharp result, use a PNG about twice as wide as it will display.</p>
+          </details>
+          <div class="full subhead">
+            <span class="label-text"><span>Award or accreditation badges <span class="optional">optional</span></span></span>
+            <p class="hint">Shown small, beside or below your signature. Use the same kind of image link as your logo. The description is shown if images are blocked.</p>
+          </div>
+          <div class="full badge-list" id="badgeFields"></div>
+        </div>
+      </details>
+
+      <details class="panel">
+        <summary><span class="step">5</span> Social links</summary>
+        <div class="fields" id="socialFields"></div>
+      </details>
+
+      <details class="panel">
+        <summary><span class="step">6</span> Colour and font</summary>
+        <div class="fields">
+          <div class="full">
+            <span class="label-text">Brand colour</span>
+            <div class="swatches" id="swatches"></div>
+          </div>
+          <label>Font<select data-field="font" id="fontSelect"></select></label>
+          <p class="hint full">Only fonts that every email app already has are listed, so your signature looks the same for everyone.</p>
+        </div>
+      </details>
+
+      <details class="panel">
+        <summary><span class="step">7</span> Footer <span class="optional">optional</span></summary>
+        <div class="fields">
+          <label class="full">Footer text
+            <textarea data-field="footerText" rows="2" placeholder="Company No. 12345678 · Registered in England and Wales"></textarea>
+          </label>
+          <div class="full">
+            <span class="label-text">Footer style</span>
+            <div class="segmented" role="radiogroup" aria-label="Footer style">
+              <label><input type="radio" name="footerStyle" value="text" data-field="footerStyle"><span>Small text</span></label>
+              <label><input type="radio" name="footerStyle" value="bar" data-field="footerStyle"><span>Colour bar</span></label>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <button type="button" class="link-button" id="resetBtn">Start over</button>
+    </section>
+
+    <!-- Preview -->
+    <section class="preview-col" aria-label="Preview">
+      <div class="sticky">
+        <div class="mail">
+          <div class="mail-head">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            <span class="mail-title">New message</span>
+          </div>
+          <div class="mail-meta">
+            <div><span>To</span> someone@example.com</div>
+            <div><span>Subject</span> Great to meet you</div>
+          </div>
+          <div class="mail-body">
+            <p>Hi there,</p>
+            <p>Thanks for your time today. Speak soon.</p>
+            <p>Best wishes,</p>
+            <div id="preview" class="signature-out"></div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="button" class="btn primary" id="copyBtn">Copy signature</button>
+          <button type="button" class="btn" id="copyHtmlBtn">Copy HTML</button>
+          <button type="button" class="btn" id="downloadBtn">Download file</button>
+        </div>
+        <p class="toast" id="toast" role="status" aria-live="polite"></p>
+
+        <div class="install">
+          <h2>Add it to your email</h2>
+          <div class="tabs" role="tablist" id="installTabs">
+            <button role="tab" data-tab="outlook-new" aria-selected="true">Outlook (new) &amp; web</button>
+            <button role="tab" data-tab="outlook-classic" aria-selected="false">Outlook classic</button>
+            <button role="tab" data-tab="gmail" aria-selected="false">Gmail</button>
+            <button role="tab" data-tab="apple" aria-selected="false">Apple Mail</button>
+          </div>
+
+          <ol class="tab-panel" data-panel="outlook-new">
+            <li>Click <strong>Copy signature</strong> above.</li>
+            <li>In Outlook, open <strong>Settings</strong> (the gear icon) → <strong>Accounts</strong> → <strong>Signatures</strong>.</li>
+            <li>Click <strong>+ New signature</strong>, give it a name, click in the box and press <kbd>Ctrl</kbd>+<kbd>V</kbd> (<kbd>⌘</kbd>+<kbd>V</kbd> on Mac).</li>
+            <li>Under <em>Select default signatures</em>, choose it for new messages and for replies.</li>
+            <li>Click <strong>Save</strong>.</li>
+          </ol>
+          <ol class="tab-panel" data-panel="outlook-classic" hidden>
+            <li>Click <strong>Copy signature</strong> above.</li>
+            <li>In Outlook, go to <strong>File</strong> → <strong>Options</strong> → <strong>Mail</strong> → <strong>Signatures…</strong></li>
+            <li>Click <strong>New</strong>, name it, then click in the edit box and press <kbd>Ctrl</kbd>+<kbd>V</kbd>.</li>
+            <li>On the right, choose it for <em>New messages</em> and <em>Replies/forwards</em>.</li>
+            <li>Click <strong>OK</strong>.</li>
+          </ol>
+          <ol class="tab-panel" data-panel="gmail" hidden>
+            <li>Click <strong>Copy signature</strong> above.</li>
+            <li>In Gmail, click the gear icon → <strong>See all settings</strong>.</li>
+            <li>On the <strong>General</strong> tab, scroll to <strong>Signature</strong> and click <strong>+ Create new</strong>.</li>
+            <li>Name it, click in the box and paste.</li>
+            <li>Set it as the default for new emails and replies, then click <strong>Save Changes</strong> at the bottom of the page.</li>
+          </ol>
+          <ol class="tab-panel" data-panel="apple" hidden>
+            <li>Click <strong>Copy signature</strong> above.</li>
+            <li>In Mail, open <strong>Settings</strong> → <strong>Signatures</strong>.</li>
+            <li>Choose your account, click <strong>+</strong>, and untick <em>Always match my default message font</em>.</li>
+            <li>Click in the right-hand box, delete the placeholder text and paste.</li>
+            <li>Close the window. The signature saves automatically.</li>
+          </ol>
+          <p class="hint">Logo not showing after you paste? Check the logo link in step 4. Your email app may also ask you to “show images” the first time.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>SignOff runs entirely in your browser. Nothing you type is uploaded or stored anywhere except on this device.</p>
+  </footer>
+
+  <script src="js/templates.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
