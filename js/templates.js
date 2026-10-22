@@ -141,6 +141,8 @@
 
   // Text size plus spacing for a part. Line spacing overrides are a multiple
   // of the font size, written as exact pixels because Outlook ignores multipliers.
+  // Text never wraps, so phone email apps shrink the whole signature to fit
+  // rather than re-flowing it into a different layout.
   function ts(d, role, size, defaultLineHeight) {
     var s = (d.spacing && d.spacing[role]) || {};
     var line = parseFloat(s.line);
@@ -149,7 +151,8 @@
       (line > 0
         ? "line-height:" + Math.round(size * line) + "px;mso-line-height-rule:exactly;"
         : "line-height:" + defaultLineHeight + ";") +
-      (letter ? "letter-spacing:" + letter + "px;" : "");
+      (letter ? "letter-spacing:" + letter + "px;" : "") +
+      "white-space:nowrap;";
   }
 
   // Extra space (px) between the name/title block and the rest of the signature.
@@ -294,11 +297,12 @@
       "</tr></table></td></tr>";
   }
 
-  // Footer text is escaped, then **double asterisks** become bold.
+  // Footer text is escaped, then **double asterisks** become bold. It always
+  // stays on one line, so line breaks become a wide space.
   function footerText(d) {
     return esc(trim(d.footerText))
       .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-      .replace(/\r?\n/g, "<br>");
+      .replace(/\s*\r?\n\s*/g, "&nbsp;&nbsp; ");
   }
 
   // Shared footer: either small text or a solid coloured bar.
@@ -343,7 +347,8 @@
   function table(d, inner, width) {
     return '<table cellpadding="0" cellspacing="0" border="0" role="presentation"' +
       (width ? ' width="' + width + '"' : "") +
-      ' style="border-collapse:collapse;font-family:' + fnt(d, "body") + ";color:" + col(d, "text") + ';">' +
+      ' style="border-collapse:collapse;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;font-family:' +
+      fnt(d, "body") + ";color:" + col(d, "text") + ';">' +
       inner + "</table>";
   }
 
@@ -389,8 +394,8 @@
     var tl = titleHtml(d, 13, "&nbsp;&nbsp;&middot;&nbsp;&nbsp;");
     if (tl) rows += "<tr>" + td(d, "padding:2px 0 0 0;", tl) + "</tr>";
     var divider = col(d, "divider");
-    rows += '<tr><td style="padding:' + (10 + titleGap(d)) + 'px 0 10px 0;"><table cellpadding="0" cellspacing="0" border="0" role="presentation" width="60" style="border-collapse:collapse;"><tr><td height="2" bgcolor="' +
-      divider + '" style="height:2px;line-height:2px;font-size:2px;background-color:' + divider + ';">&nbsp;</td></tr></table></td></tr>';
+    rows += '<tr><td style="padding:' + (10 + titleGap(d)) + 'px 0 10px 0;"><table cellpadding="0" cellspacing="0" border="0" role="presentation" width="60" style="border-collapse:collapse;width:60px;"><tr>' +
+      '<td width="60" style="width:60px;border-top:2px solid ' + divider + ';font-size:0;line-height:0;">&nbsp;</td></tr></table></td></tr>';
 
     var contacts = contactItems(d);
     if (contacts.length) {
@@ -412,7 +417,7 @@
     var head = nameHtml(d, 14, "1.5");
     var tl = titleHtml(d, 13, ", ");
     if (tl) head += '<span style="font-size:13px;color:' + col(d, "title") + ';">&nbsp;&nbsp;&mdash;&nbsp;&nbsp;</span>' + tl;
-    rows += "<tr>" + td(d, "padding:0 0 " + titleGap(d) + "px 0;line-height:1.5;", head) + "</tr>";
+    rows += "<tr>" + td(d, "padding:0 0 " + titleGap(d) + "px 0;line-height:1.5;white-space:nowrap;", head) + "</tr>";
 
     var contacts = contactItems(d);
     if (contacts.length) {
@@ -478,14 +483,12 @@
     rows += "<tr>" + td(d, "padding:0 0 " + (12 + titleGap(d)) + "px 0;", head) + "</tr>";
 
     var dividerColour = col(d, "divider");
-    var divider = '<td width="2" bgcolor="' + dividerColour + '" style="width:2px;background-color:' +
-      dividerColour + ';font-size:0;line-height:0;">&nbsp;</td>';
     // Columns: logo | address | contacts. Any can be missing; dividers go between those present.
     var cols = [];
     var logo = logoHtml(d, opts.preview);
     if (logo) cols.push({ style: "", html: logo });
     if (hasText(d.address)) {
-      cols.push({ style: ts(d, "address", 14, "20px") + "white-space:nowrap;", html: addressHtml(d, true) });
+      cols.push({ style: ts(d, "address", 14, "20px"), html: addressHtml(d, true) });
     }
 
     var text = col(d, "text");
@@ -503,7 +506,7 @@
       var icon = src ? '<td valign="middle" style="padding:0 8px ' + pad + 'px 0;"><img src="' + esc(src) +
         '" width="20" height="20" alt="" style="display:block;border:0;outline:none;width:20px;height:20px;"></td>' : "";
       return "<tr>" + icon + td(d, "vertical-align:middle;padding:0 0 " + pad + "px 0;" +
-        ts(d, c[0] === "social" ? "social" : "text", 14, "20px") + "white-space:nowrap;", c[1]) + "</tr>";
+        ts(d, c[0] === "social" ? "social" : "text", 14, "20px"), c[1]) + "</tr>";
     }).join("");
     if (contactRows) {
       cols.push({
@@ -515,10 +518,11 @@
       var cells = cols.map(function (c, i) {
         var left = i > 0 ? 18 : 0;
         var right = i < cols.length - 1 ? 18 : 0;
-        return td(d, "vertical-align:middle;padding:0 " + right + "px 0 " + left + "px;" + c.style, c.html);
+        var rule = i > 0 ? "border-left:2px solid " + dividerColour + ";" : "";
+        return td(d, "vertical-align:middle;padding:0 " + right + "px 0 " + left + "px;" + rule + c.style, c.html);
       });
       rows += '<tr><td style="padding:0;"><table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;"><tr>' +
-        cells.join(divider) + "</tr></table></td></tr>";
+        cells.join("") + "</tr></table></td></tr>";
     }
     return table(d, rows + badgesRow(d, 1, 100, 10) + footerRow(d, 1, "center", 11));
   }

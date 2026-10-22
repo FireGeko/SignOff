@@ -23,12 +23,12 @@
       <details class="panel import-panel">
         <summary><span class="step step-icon" aria-hidden="true">&#8593;</span> Open an existing signature <span class="optional">optional</span></summary>
         <div class="fields">
-          <p class="hint full">Start from a signature you already have. Files downloaded from SignOff reopen with all their settings. Any other signature opens as a <strong>Custom</strong> style that keeps its layout and lets you edit its text, links, images, colours and fonts.</p>
+          <p class="hint full">Start from a signature you already have. Files downloaded from SignOff reopen with all their settings. Any other signature (including one copied from an email) can be rebuilt in a SignOff style with its details filled in, or kept exactly as it is as a <strong>Custom</strong> style.</p>
           <div class="full import-actions">
             <label class="btn small file-btn">Upload a signature file
               <input type="file" id="importFile" accept=".htm,.html,text/html">
             </label>
-            <span class="hint">.htm or .html, e.g. from Outlook's Signatures folder</span>
+            <span class="hint">or drag a .htm / .html file onto this panel</span>
           </div>
           <div class="full">
             <span class="label-text">Or paste it here</span>
@@ -182,7 +182,7 @@
           <label class="full">Footer text
             <textarea data-field="footerText" rows="2" placeholder="**Example Ltd** (Company No. 12345678)"></textarea>
           </label>
-          <p class="hint full">Wrap words in double asterisks to make them bold: <code>**Example Ltd**</code></p>
+          <p class="hint full">Wrap words in double asterisks to make them bold: <code>**Example Ltd**</code>. The footer always stays on one line, so separate lines are joined with a space.</p>
           <div class="full">
             <span class="label-text">Footer style</span>
             <div class="segmented" role="radiogroup" aria-label="Footer style">
@@ -213,6 +213,7 @@
             <p>Thanks for your time today. Speak soon.</p>
             <p>Best wishes,</p>
             <div id="preview" class="signature-out"></div>
+            <p class="placeholder-note" id="scaleNote" hidden>Shown smaller to fit this screen, as a phone would. Your signature keeps its full size and layout.</p>
             <p class="placeholder-note" id="placeholderNote" hidden>Dashed shapes show where a logo, badge or image would go. They're left out when you copy.</p>
           </div>
         </div>

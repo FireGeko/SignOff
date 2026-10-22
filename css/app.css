@@ -142,6 +142,7 @@ output { color: var(--text); font-weight: 600; }
 .badge-list { display: flex; flex-direction: column; gap: 10px; }
 /* ---------- Opening an existing signature ---------- */
 .import-panel { border-style: dashed; }
+.import-panel.dragging { border-color: var(--accent); background: #eef3fc; }
 .step-icon { font-size: 13px; }
 .import-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .file-btn { position: relative; display: inline-block; cursor: pointer; }
@@ -411,7 +412,8 @@ input[type="color"] {
 .mail-meta span { display: inline-block; width: 64px; color: #a19d95; }
 .mail-body { padding: 20px; font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #2b2b2b; }
 .mail-body p { margin: 0 0 12px; }
-.signature-out { padding-top: 6px; overflow-x: auto; }
+.signature-out { padding-top: 6px; overflow: hidden; }
+.sig-scale { display: inline-block; transform-origin: top left; }
 
 .actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .btn {

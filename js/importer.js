@@ -417,6 +417,211 @@
     return root.innerHTML;
   }
 
+  /* ---------- Rebuilding a signature as a built-in style ---------- */
+
+  // Social links are recognised by where they point.
+  var SOCIAL_HOSTS = [
+    ["linkedin", /(^|\.)linkedin\.com$/], ["instagram", /(^|\.)instagram\.com$/],
+    ["facebook", /(^|\.)(facebook|fb)\.com$/], ["x", /(^|\.)(x|twitter)\.com$/],
+    ["tiktok", /(^|\.)tiktok\.com$/], ["youtube", /(^|\.)(youtube\.com|youtu\.be)$/],
+    ["bluesky", /(^|\.)bsky\.app$/]
+  ];
+
+  // The nearest inline value of a CSS property, looking up through ancestors.
+  function inherited(el, prop) {
+    for (var n = el; n && n.nodeType === 1; n = n.parentElement) {
+      var v = n.style && n.style.getPropertyValue(prop);
+      if (v) return v;
+    }
+    return "";
+  }
+
+  function px(value) {
+    var m = /([\d.]+)\s*(px|pt)?/.exec(value || "");
+    if (!m) return 0;
+    return m[2] === "pt" ? parseFloat(m[1]) * 4 / 3 : parseFloat(m[1]);
+  }
+
+  function hostOf(href) {
+    try { return new URL(href).hostname.replace(/^www\./, "").toLowerCase(); } catch (e) { return ""; }
+  }
+
+  function colourOf(el) {
+    var c = toHex(inherited(el, "color"));
+    return /^#[0-9a-f]{6}$/.test(c) ? c : "";
+  }
+
+  // The background a footer bar sits on, if any.
+  function barColour(el) {
+    for (var n = el; n && n.nodeType === 1; n = n.parentElement) {
+      var c = toHex(n.style.backgroundColor || n.getAttribute("bgcolor"));
+      if (/^#[0-9a-f]{6}$/.test(c)) return { colour: c, el: n };
+    }
+    return null;
+  }
+
+  // Reads a signature's details back out of its HTML so it can be rebuilt in
+  // one of SignOff's own styles. Best effort: returns null if it can't find at
+  // least a name and one way to get in touch.
+  function recognise(html) {
+    var root = parse(html).body;
+    var nodes = textNodes(root);
+    if (!nodes.length) return null;
+    var inLink = function (n) { return !!(n.parentElement && n.parentElement.closest("a")); };
+    var text = function (n) { return n.nodeValue.replace(/[\s ]+/g, " ").trim(); };
+    var size = function (n) { return px(inherited(n.parentElement, "font-size")); };
+
+    // Name: the largest text (the first, if several share the size).
+    var nameNode = nodes.reduce(function (best, n) {
+      return !inLink(n) && size(n) > (best ? size(best) : 0) ? n : best;
+    }, null);
+    if (!nameNode) return null;
+    var d = { name: text(nameNode), social: {}, badges: [], colors: {} };
+    var nameSize = size(nameNode);
+    d.colors.name = colourOf(nameNode.parentElement);
+
+    // Header block (Banner style): the name sits on a coloured background.
+    var header = barColour(nameNode.parentElement);
+
+    // Footer: text near the end on a coloured bar, or the last small print.
+    var after = nodes.slice(nodes.indexOf(nameNode) + 1);
+    var footerNodes = [];
+    var bar = null;
+    for (var i = after.length - 1; i >= 0; i--) {
+      var n = after[i];
+      var b = barColour(n.parentElement);
+      if (b && (!header || b.el !== header.el)) {
+        bar = bar || b;
+        if (b.el === bar.el) { footerNodes.unshift(n); continue; }
+      }
+      if (!bar && !inLink(n) && size(n) && size(n) <= 11 && size(n) < nameSize) { footerNodes.unshift(n); continue; }
+      break;
+    }
+    if (footerNodes.length) {
+      var holder = footerNodes[0].parentElement.closest("td,p,div") || footerNodes[0].parentElement;
+      d.footerText = Array.prototype.map.call(holder.childNodes, function (c) {
+        var t = c.textContent.replace(/[\s ]+/g, " ");
+        return c.nodeType === 1 && /^(b|strong)$/i.test(c.localName) ? "**" + t.trim() + "** " : t;
+      }).join("").replace(/\s+/g, " ").trim();
+      d.footerStyle = bar ? "bar" : "text";
+      if (bar) d.colors.footerBg = bar.colour;
+      if (bar) d.colors.footerText = colourOf(footerNodes[0].parentElement);
+      else d.colors.fineprint = colourOf(footerNodes[0].parentElement);
+    }
+    var body = after.slice(0, after.length - footerNodes.length);
+
+    // Job title (and company, if joined with | or ·): the first plain text after the name.
+    var titleNode = body.filter(function (n) { return !inLink(n) && !/^[TMEW]$/.test(text(n)) && text(n).length > 1; })[0];
+    if (titleNode && size(titleNode) < nameSize) {
+      var bits = text(titleNode).split(/\s*[|·]\s*|\s+[—–-]\s+/);
+      d.jobTitle = bits[0];
+      if (bits[1]) d.company = bits[1];
+      d.colors.title = colourOf(titleNode.parentElement);
+    } else {
+      titleNode = null;
+    }
+
+    // Links: phone, mobile, email, website, social profiles, and anything else as free text.
+    var logoLink = "";
+    Array.prototype.forEach.call(root.querySelectorAll("a[href]"), function (a) {
+      var href = a.getAttribute("href");
+      var label = a.textContent.replace(/[\s ]+/g, " ").trim();
+      if (footerNodes.some(function (n) { return a.contains(n); })) return;
+      if (/^tel:/i.test(href)) {
+        if (!d.phone) d.phone = label || href.slice(4);
+        else if (!d.mobile) d.mobile = label || href.slice(4);
+        d.colors.text = d.colors.text || colourOf(a);
+        return;
+      }
+      if (/^mailto:/i.test(href)) {
+        d.email = label || href.slice(7);
+        d.colors.text = d.colors.text || colourOf(a);
+        return;
+      }
+      var host = hostOf(href);
+      if (!host) return;
+      var social = SOCIAL_HOSTS.filter(function (s) { return s[1].test(host); })[0];
+      if (social) {
+        d.social[social[0]] = href;
+        d.colors.social = d.colors.social || colourOf(a);
+        return;
+      }
+      if (a.querySelector("img")) {
+        // A linked logo usually points at the website; only use that if no
+        // written web address turns up.
+        logoLink = logoLink || href;
+        return;
+      }
+      var looksLikeSite = label && host.indexOf(label.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0].toLowerCase()) === 0;
+      if (looksLikeSite && !d.website) {
+        d.website = label;
+      } else if (label && !d.socialText) {
+        d.socialText = label;
+        d.socialTextUrl = href;
+      }
+    });
+
+    if (!d.website && logoLink) d.website = logoLink.replace(/^https?:\/\//i, "").replace(/\/$/, "");
+
+    // Address: plain text that isn't the name, title, footer, a label or a separator.
+    var addressLines = body.filter(function (n) {
+      var t = text(n);
+      return n !== titleNode && !inLink(n) && t.length > 2 && !/^[TMEW]$/.test(t) && !/^[|·•\-–—]+$/.test(t);
+    }).map(text);
+    if (addressLines.length) {
+      d.address = addressLines.join("\n");
+      d.colors.address = colourOf(body.filter(function (n) { return text(n) === addressLines[0]; })[0].parentElement);
+    }
+
+    // Images: tiny ones are contact icons; the first other one is the logo, the rest are badges.
+    var images = Array.prototype.filter.call(root.querySelectorAll("img"), function (img) {
+      var w = parseInt(img.getAttribute("width"), 10) || px(img.style.width);
+      return !(w && w <= 24);
+    });
+    images.forEach(function (img, i) {
+      var w = parseInt(img.getAttribute("width"), 10) || Math.round(px(img.style.width)) || 0;
+      if (i === 0) {
+        d.logoUrl = img.getAttribute("src") || "";
+        if (w) d.logoWidth = w;
+        // Styles that show a logo often leave the company name out of the
+        // text; the logo's description usually holds it.
+        var alt = (img.getAttribute("alt") || "").trim();
+        if (!d.company && alt && !/^(logo|image)$/i.test(alt)) d.company = alt;
+      } else {
+        d.badges.push({ url: img.getAttribute("src") || "", alt: img.getAttribute("alt") || "", width: w || 64 });
+      }
+    });
+
+    // Divider colour: the first left border between columns.
+    var ruled = Array.prototype.filter.call(root.querySelectorAll("td"), function (td) {
+      return td.style.borderLeftStyle === "solid" || td.style.borderTopStyle === "solid";
+    })[0];
+    if (ruled) d.colors.divider = toHex(ruled.style.borderLeftColor || ruled.style.borderTopColor);
+
+    if (!d.name || !(d.phone || d.mobile || d.email || d.website)) return null;
+
+    // Which built-in style it's closest to.
+    var nameFont = firstFamily(inherited(nameNode.parentElement, "font-family")).toLowerCase();
+    if (header) {
+      d.template = "banner";
+      d.colors.headerBg = header.colour;
+      d.colors.headerText = d.colors.name;
+      delete d.colors.name;
+    } else if (nameSize >= 24) {
+      d.template = "statement";
+    } else if (nameSize >= 19.5) {
+      d.template = "stacked";
+    } else if (nameSize >= 16 || images.length) {
+      d.template = "classic";
+    } else {
+      d.template = "minimal";
+    }
+    var fontKey = Object.keys(S.fonts).filter(function (k) { return S.fonts[k].label.toLowerCase() === nameFont; })[0];
+    if (fontKey) d.fonts = { name: fontKey };
+    Object.keys(d.colors).forEach(function (k) { if (!d.colors[k]) delete d.colors[k]; });
+    return d;
+  }
+
   /* ---------- Importing ---------- */
 
   // Returns a promise of { settings } for a SignOff file, or { custom } for anything else.
@@ -480,6 +685,7 @@
     importHtml: importHtml,
     sanitize: sanitize,
     parts: parts,
+    recognise: recognise,
     render: render,
     imageProblem: imageProblem,
     toHex: toHex,

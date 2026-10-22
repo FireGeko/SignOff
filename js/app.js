@@ -199,8 +199,38 @@
     return (holder.innerText || holder.textContent).trim();
   }
 
+  // Signatures never re-wrap, so on a narrow screen the preview shrinks the
+  // whole thing to fit, the same way phone email apps do.
+  function fitPreview() {
+    var inner = previewEl.firstElementChild;
+    if (!inner) return;
+    inner.style.transform = "";
+    previewEl.style.height = "";
+    var natural = inner.offsetWidth;
+    var room = previewEl.clientWidth;
+    if (natural > room && room > 0) {
+      var scale = room / natural;
+      inner.style.transform = "scale(" + scale + ")";
+      // The box's height includes its own top padding (box-sizing: border-box).
+      var padding = parseFloat(getComputedStyle(previewEl).paddingTop) || 0;
+      previewEl.style.height = Math.ceil(inner.offsetHeight * scale + padding) + "px";
+    }
+    document.getElementById("scaleNote").hidden = !(natural > room && room > 0);
+  }
+
+  window.addEventListener("resize", fitPreview);
+
+  // Images finish loading after the preview is drawn and change its size, so
+  // re-fit whenever the signature's own size changes.
+  var previewWatcher = window.ResizeObserver ? new ResizeObserver(fitPreview) : null;
+
   function render() {
-    previewEl.innerHTML = previewHtml();
+    previewEl.innerHTML = '<div class="sig-scale">' + previewHtml() + "</div>";
+    if (previewWatcher) {
+      previewWatcher.disconnect();
+      previewWatcher.observe(previewEl.firstElementChild);
+    }
+    fitPreview();
     document.getElementById("placeholderNote").hidden = !previewEl.querySelector("[data-placeholder]");
     previewEl.classList.toggle("custom-preview", isCustom());
     syncBadgePosition();
@@ -749,6 +779,16 @@
         location.reload();
         return;
       }
+      var found = S.importer.recognise(result.custom.html);
+      if (found) {
+        var styleName = S.findTemplate(found.template).name;
+        if (confirm("Rebuild this signature in SignOff's " + styleName + " style, with all its details editable?\n\n" +
+          "OK: rebuild it as " + styleName + " (replaces the details in the editor now).\n" +
+          "Cancel: keep its exact original layout as a Custom style instead.")) {
+          rebuildFrom(found);
+          return;
+        }
+      }
       if (state.custom && !confirm("Replace your current custom style with this signature?")) {
         setImportStatus("");
         return;
@@ -768,15 +808,73 @@
     });
   }
 
-  document.getElementById("importFile").addEventListener("change", function (e) {
-    var file = e.target.files && e.target.files[0];
-    e.target.value = "";
+  // Replaces the details in the editor with ones read from an existing
+  // signature, in the built-in style it most resembles. Anything not found is
+  // cleared, so details from the old draft don't linger.
+  function rebuildFrom(found) {
+    var c = found.colors;
+    var primary = c.name || c.headerBg || state.theme.primary;
+    var next = Object.assign({}, state, {
+      template: found.template,
+      name: found.name || "",
+      jobTitle: found.jobTitle || "",
+      company: found.company || "",
+      phone: found.phone || "",
+      mobile: found.mobile || "",
+      email: found.email || "",
+      website: found.website || "",
+      address: found.address || "",
+      logoUrl: found.logoUrl || "",
+      logoWidth: found.logoWidth || state.logoWidth,
+      social: found.social,
+      socialText: found.socialText || "",
+      socialTextUrl: found.socialTextUrl || "",
+      badges: found.badges,
+      footerText: found.footerText || "",
+      footerStyle: found.footerStyle || "text",
+      theme: { id: "custom", primary: primary, accent: c.divider || primary, solid: false },
+      colorOverrides: c,
+      fonts: Object.assign({}, state.fonts, found.fonts || {})
+    });
+    clearTimeout(saveTimer);
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(normalise(next))); } catch (e) { /* ignore */ }
+    location.reload();
+  }
+
+  function openFile(file) {
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
       setImportStatus("That file is too large to be an email signature.", "error");
       return;
     }
     file.arrayBuffer().then(function (buf) { openSignature(decodeFile(buf), file.name); });
+  }
+
+  document.getElementById("importFile").addEventListener("change", function (e) {
+    var file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    openFile(file);
+  });
+
+  // Files can also be dragged onto the panel, which works even where a
+  // browser can't open a file picker.
+  var importPanel = document.querySelector(".import-panel");
+  ["dragenter", "dragover"].forEach(function (type) {
+    importPanel.addEventListener(type, function (e) {
+      if (!e.dataTransfer || Array.prototype.indexOf.call(e.dataTransfer.types, "Files") < 0) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+      importPanel.classList.add("dragging");
+    });
+  });
+  ["dragleave", "drop"].forEach(function (type) {
+    importPanel.addEventListener(type, function () { importPanel.classList.remove("dragging"); });
+  });
+  importPanel.addEventListener("drop", function (e) {
+    if (!e.dataTransfer || !e.dataTransfer.files.length) return;
+    e.preventDefault();
+    importPanel.open = true;
+    openFile(e.dataTransfer.files[0]);
   });
 
   var pasteBox = document.getElementById("importPaste");
