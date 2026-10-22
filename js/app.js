@@ -8,21 +8,24 @@
   var PRODUCTION_ASSET_BASE = "https://firegeko.github.io/SignOff/assets/";
   var HEX = /^#[0-9a-f]{6}$/i;
 
+  // The example signature is fictional: an invented name, a phone number from
+  // Ofcom's range reserved for drama, and .example domains, which can never be
+  // real websites or inboxes.
   var DEFAULTS = {
     template: "classic",
-    name: "Alex Morgan",
+    name: "Jordan Avery",
     jobTitle: "Head of Partnerships",
     company: "Northwind Studio",
     phone: "+44 113 496 0000",
     mobile: "",
-    email: "alex@northwind.example",
+    email: "jordan@northwind.example",
     website: "www.northwind.example",
     address: "",
     logoUrl: "",
     logoWidth: 120,
-    social: { linkedin: "linkedin.com/company/northwind" },
-    socialText: "",
-    socialTextUrl: "",
+    social: {},
+    socialText: "Book a call",
+    socialTextUrl: "www.northwind.example/contact",
     badges: [],
     icons: {},
     // theme.primary / accent / solid are only used when id is "custom".
