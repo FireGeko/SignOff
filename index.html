@@ -20,12 +20,41 @@
     <!-- Editor -->
     <section class="editor" aria-label="Signature editor">
 
+      <details class="panel import-panel">
+        <summary><span class="step step-icon" aria-hidden="true">&#8593;</span> Open an existing signature <span class="optional">optional</span></summary>
+        <div class="fields">
+          <p class="hint full">Start from a signature you already have. Files downloaded from SignOff reopen with all their settings. Any other signature opens as a <strong>Custom</strong> style that keeps its layout and lets you edit its text, links, images, colours and fonts.</p>
+          <div class="full import-actions">
+            <label class="btn small file-btn">Upload a signature file
+              <input type="file" id="importFile" accept=".htm,.html,text/html">
+            </label>
+            <span class="hint">.htm or .html, e.g. from Outlook's Signatures folder</span>
+          </div>
+          <div class="full">
+            <span class="label-text">Or paste it here</span>
+            <div class="paste-box" id="importPaste" contenteditable="true" role="textbox" aria-label="Paste a signature here"
+              data-placeholder="Copy your signature from an email you've sent, then click here and paste (Ctrl+V)."></div>
+          </div>
+          <p class="hint full" id="importStatus" role="status" aria-live="polite"></p>
+        </div>
+      </details>
+
+
       <details class="panel" open>
         <summary><span class="step">1</span> Choose a style</summary>
         <div class="template-grid" id="templateGrid" role="radiogroup" aria-label="Template"></div>
       </details>
 
-      <details class="panel" open>
+      <details class="panel" id="customPanel" open hidden>
+        <summary><span class="step">2</span> Edit your custom style</summary>
+        <div class="fields">
+          <div class="full custom-editor" id="customEditor"></div>
+          <button type="button" class="link-button full-left" id="removeCustomBtn">Remove custom style</button>
+        </div>
+      </details>
+
+
+      <details class="panel" data-builtin open>
         <summary><span class="step">2</span> Your details</summary>
         <div class="fields">
           <label>Full name<input type="text" data-field="name" autocomplete="name"></label>
@@ -34,7 +63,7 @@
         </div>
       </details>
 
-      <details class="panel" open>
+      <details class="panel" data-builtin open>
         <summary><span class="step">3</span> Contact</summary>
         <div class="fields">
           <label>Phone<input type="tel" data-field="phone" autocomplete="tel"></label>
@@ -45,14 +74,15 @@
         </div>
       </details>
 
-      <details class="panel">
-        <summary><span class="step">4</span> Logo and badges</summary>
+      <details class="panel" data-builtin>
+        <summary><span class="step">4</span> Logo, badges and icons</summary>
         <div class="fields">
+          <p class="notice full" id="imageNote" hidden>The Minimal style is text only, so it doesn't show a logo, badges or icons. Pick another style in step 1 to use them.</p>
           <label class="full">Logo image link
             <input type="url" data-field="logoUrl" placeholder="https://www.yoursite.com/logo.png">
           </label>
           <p class="hint full" id="logoStatus" role="status" aria-live="polite"></p>
-          <label class="full">Logo width <output id="logoWidthOut"></output>
+          <label class="full"><span>Logo width <output id="logoWidthOut"></output></span>
             <input type="range" min="40" max="300" step="5" data-field="logoWidth">
           </label>
           <details class="help full">
@@ -67,35 +97,92 @@
           </details>
           <div class="full subhead">
             <span class="label-text"><span>Award or accreditation badges <span class="optional">optional</span></span></span>
-            <p class="hint">Shown small, beside or below your signature. Use the same kind of image link as your logo. The description is shown if images are blocked.</p>
+            <p class="hint">Add as many as you like, each at its own size. Use the same kind of image link as your logo. The description is shown if images are blocked.</p>
           </div>
           <div class="full badge-list" id="badgeFields"></div>
+          <button type="button" class="btn small full-left" id="addBadgeBtn">+ Add badge</button>
+          <div class="full badge-position" id="badgePositionField">
+            <div class="spacing-head">
+              <label for="badgePosition">Badge row position <output id="badgePositionOut"></output></label>
+              <button type="button" class="link-button reset" id="badgePositionReset">Reset</button>
+            </div>
+            <input type="range" id="badgePosition" min="0" max="100" step="5" aria-describedby="badgePositionOut">
+            <div class="range-ends" aria-hidden="true"><span>Left</span><span>Centre</span><span>Right</span></div>
+          </div>
+          <div class="full icon-section" id="iconSection">
+            <div class="subhead">
+              <span class="label-text"><span>Contact icons</span></span>
+              <p class="hint">Ready-made icons are included and follow the icon colour in step 6. To use your own, paste a link to a square PNG (40 × 40px is ideal).</p>
+            </div>
+            <div class="fields-pair" id="iconFields"></div>
+          </div>
         </div>
       </details>
 
-      <details class="panel">
-        <summary><span class="step">5</span> Social links</summary>
-        <div class="fields" id="socialFields"></div>
+      <details class="panel" data-builtin>
+        <summary><span class="step">5</span> Social links and free text</summary>
+        <div class="fields" id="socialFields">
+          <div class="full free-text">
+            <label><span>Free text <span class="optional">e.g. @yourhandle or “Book a call”</span></span>
+              <input type="text" data-field="socialText">
+            </label>
+            <label><span>Link for the free text <span class="optional">optional</span></span>
+              <input type="url" data-field="socialTextUrl" placeholder="https://…">
+            </label>
+            <p class="hint">Shown at the start of your social line, in the same colour as your contact details. You can change its colour in step 6.</p>
+          </div>
+        </div>
       </details>
 
-      <details class="panel">
-        <summary><span class="step">6</span> Colour and font</summary>
+      <details class="panel" data-builtin>
+        <summary><span class="step">6</span> Colours</summary>
         <div class="fields">
-          <div class="full">
-            <span class="label-text">Brand colour</span>
-            <div class="swatches" id="swatches"></div>
+          <div class="full format-switch">
+            <span class="label-text">Colour codes</span>
+            <div class="segmented" role="radiogroup" aria-label="Show colour codes as">
+              <label><input type="radio" name="colourFormat" value="hex"><span>HEX</span></label>
+              <label><input type="radio" name="colourFormat" value="rgb"><span>RGB</span></label>
+            </div>
+            <span class="hint">You can type either into any colour box.</span>
           </div>
-          <label>Font<select data-field="font" id="fontSelect"></select></label>
+          <div class="full">
+            <span class="label-text">Colour theme</span>
+            <div class="theme-grid" id="themeGrid" role="radiogroup" aria-label="Colour theme"></div>
+            <p class="hint">A theme colours every part of your signature at once. Picking a new theme replaces any changes below.</p>
+          </div>
+          <div class="full subhead">
+            <span class="label-text">Fine-tune each part</span>
+            <p class="hint">Only the parts used by your chosen style are listed.</p>
+          </div>
+          <div class="full role-list" id="roleColours"></div>
+        </div>
+      </details>
+
+      <details class="panel" data-builtin>
+        <summary><span class="step">7</span> Fonts</summary>
+        <div class="fields" id="fontFields">
           <p class="hint full">Only fonts that every email app already has are listed, so your signature looks the same for everyone.</p>
         </div>
       </details>
 
-      <details class="panel">
-        <summary><span class="step">7</span> Footer <span class="optional">optional</span></summary>
+      <details class="panel" data-builtin>
+        <summary><span class="step">8</span> Text spacing</summary>
+        <div class="fields">
+          <p class="hint full">Adjust the space between letters and between lines for each part of your signature. “Auto” uses the style's own spacing.</p>
+          <label class="full gap-control"><span>Space after job title <output id="titleGapOut"></output></span>
+            <input type="range" min="0" max="40" step="2" data-field="titleGap">
+          </label>
+          <div class="full spacing-list" id="spacingFields"></div>
+        </div>
+      </details>
+
+      <details class="panel" data-builtin>
+        <summary><span class="step">9</span> Footer <span class="optional">optional</span></summary>
         <div class="fields">
           <label class="full">Footer text
-            <textarea data-field="footerText" rows="2" placeholder="Company No. 12345678 · Registered in England and Wales"></textarea>
+            <textarea data-field="footerText" rows="2" placeholder="**Example Ltd** (Company No. 12345678)"></textarea>
           </label>
+          <p class="hint full">Wrap words in double asterisks to make them bold: <code>**Example Ltd**</code></p>
           <div class="full">
             <span class="label-text">Footer style</span>
             <div class="segmented" role="radiogroup" aria-label="Footer style">
@@ -126,6 +213,7 @@
             <p>Thanks for your time today. Speak soon.</p>
             <p>Best wishes,</p>
             <div id="preview" class="signature-out"></div>
+            <p class="placeholder-note" id="placeholderNote" hidden>Dashed shapes show where a logo, badge or image would go. They're left out when you copy.</p>
           </div>
         </div>
 
@@ -183,7 +271,9 @@
     <p>SignOff runs entirely in your browser. Nothing you type is uploaded or stored anywhere except on this device.</p>
   </footer>
 
+  <script src="js/themes.js"></script>
   <script src="js/templates.js"></script>
+  <script src="js/importer.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
